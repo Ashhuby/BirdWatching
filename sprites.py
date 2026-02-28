@@ -13,7 +13,7 @@ def load_asset(filename, size=None):
 
 
 class Bird:
-    def __init__(self, name, pos, total_frames, loop_start_frame=1):
+    def __init__(self, name, pos, total_frames, loop_start_frame=1, animation_speed=0.2):
         self.name = name
         self.pos = list(pos)
         self.frames = []
@@ -26,8 +26,8 @@ class Bird:
 
         self.current_frame = 0.0
         self.is_dancing = False
-        self.animation_speed = 0.2
-        # loop_start_frame is 1-indexed for humans, so we subtract 1 for the list index
+        # Use the variable passed in to control speed
+        self.animation_speed = animation_speed
         self.loop_index = loop_start_frame
 
     def trigger_dance(self, state):
@@ -36,17 +36,16 @@ class Bird:
 
     def update(self):
         if self.is_dancing and len(self.frames) > 1:
+            # The speed variable controls how fast we move through the frame list
             self.current_frame += self.animation_speed
 
-            # If we reach the end of the animation, wrap back to the loop_index
-            # instead of going back to the idle frame (0)
             if self.current_frame >= len(self.frames):
-                self.current_frame = self.loop_index
+                self.current_frame = float(self.loop_index)
         else:
-            # When not dancing, stay on the idle frame (0)
             self.current_frame = 0.0
 
     def draw(self, screen):
         if self.frames:
+            # Convert float to int to index the frame list
             img = self.frames[int(self.current_frame)]
             screen.blit(img, self.pos)

@@ -40,13 +40,12 @@ def select_camera_source():
 selected_source, is_live = select_camera_source()
 
 def handle_persistent_audio(is_blinking, was_blinking):
-    global current_track
+    global current_track, last_scratch_time # Add global reference
 
     # JUST CLOSED EYES: Resume the disco
     if is_blinking and not was_blinking:
         track_path = os.path.join("sfx", current_track)
         pygame.mixer.music.load(track_path)
-        # Play starting from where we last left off
         pygame.mixer.music.play(loops=-1, start=track_positions[current_track])
 
     # JUST OPENED EYES: Save position and stop
@@ -56,8 +55,13 @@ def handle_persistent_audio(is_blinking, was_blinking):
 
         pygame.mixer.music.stop()
         pygame.mixer.music.unload()
-        scratch_snd.play()
 
+        # --- LIMITER LOGIC ---
+        current_time = time.time()
+        # Only play if the cooldown period has passed
+        if current_time - last_scratch_time > SCRATCH_COOLDOWN:
+            scratch_snd.play()
+            last_scratch_time = current_time
         current_track = random.choice(tracks)
 
 # --- COLORS ---
@@ -111,12 +115,15 @@ tracks = ["disco1.mp3", "disco2.mp3", "disco3.mp3"]
 track_positions = {track: 0.0 for track in tracks}
 current_track = random.choice(tracks)
 
+last_scratch_time = 0
+SCRATCH_COOLDOWN = 0.5  # Seconds to wait before allowing another scratch sfx
+
 scratch_snd = pygame.mixer.Sound(os.path.join("sfx", "record.mp3"))
 
 # --- Create Birds ---
 my_birds = [
-    Bird("octo", (200, 400), 4, 1),  # Name, (x, y), total frames
-    Bird("blue", (400,500),9, 2)
+    Bird("octo", (200, 400), 4, 1, 0.33),  # Name, (x, y), total frames
+    Bird("blue", (400,500),9, 2,0.33)
 ]
 
 # --- MAIN LOOP ---
