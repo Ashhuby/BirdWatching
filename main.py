@@ -123,9 +123,9 @@ scratch_snd = pygame.mixer.Sound(os.path.join("sfx", "record.mp3"))
 # --- Create Birds ---
 my_birds = [
     # Name, (x, y), total frames
-    Bird("blue", (100,100),8, 1,0.33, 1),
+    Bird("blue", (100,100),9, 1,0.33, 1),
     Bird("pidgey", (1440, 500), 7,1, 0.33,1),
-    Bird("hornbill", (200, 530), 7,1, 0.33,1),
+    Bird("hornbill", (180, 530), 7,1, 0.33,1),
     Bird("shoebill", (1150, 20), 5,1, 0.33,1)
 ]
 
@@ -165,7 +165,7 @@ while True:
             ear_history.append(current_ear)
             if len(ear_history) > 100: ear_history.pop(0)
 
-            is_blinking = current_ear < 0.22
+            is_blinking = current_ear < 0.20
 
             handle_persistent_audio(is_blinking, is_blinked)
 
@@ -223,7 +223,7 @@ while True:
                 # Dynamic Threshold Line
                 pygame.draw.line(screen, C_DEBUG, (graph_rect.x, graph_rect.bottom - 0.22 * 220),
                                  (graph_rect.right, graph_rect.bottom - 0.22 * 220), 2)
-                screen.blit(font_debug_tiny.render("0.22 THRESHOLD", True, C_DEBUG),
+                screen.blit(font_debug_tiny.render("0.2 THRESHOLD", True, C_DEBUG),
                             (graph_rect.right + 5, graph_rect.bottom - 0.22 * 220 - 5))
 
         # MAIN HUD
