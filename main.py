@@ -122,8 +122,11 @@ scratch_snd = pygame.mixer.Sound(os.path.join("sfx", "record.mp3"))
 
 # --- Create Birds ---
 my_birds = [
-    Bird("octo", (200, 400), 4, 1, 0.33),  # Name, (x, y), total frames
-    Bird("blue", (400,500),9, 2,0.33)
+    # Name, (x, y), total frames
+    Bird("blue", (100,100),8, 1,0.33, 1),
+    Bird("pidgey", (1440, 500), 7,1, 0.33,1),
+    Bird("hornbill", (200, 530), 7,1, 0.33,1),
+    Bird("shoebill", (1150, 20), 5,1, 0.33,1)
 ]
 
 # --- MAIN LOOP ---

@@ -13,39 +13,44 @@ def load_asset(filename, size=None):
 
 
 class Bird:
-    def __init__(self, name, pos, total_frames, loop_start_frame=1, animation_speed=0.2):
+    def __init__(self, name, pos, total_frames, loop_start_frame=1, animation_speed=0.2, scale=1.0):
         self.name = name
         self.pos = list(pos)
         self.frames = []
-
-        # Load all frames
-        for i in range(1, total_frames + 1):
-            frame = load_asset(f"{name}{i}.png", size=(150, 150))
-            if frame:
-                self.frames.append(frame)
-
-        self.current_frame = 0.0
-        self.is_dancing = False
-        # Use the variable passed in to control speed
         self.animation_speed = animation_speed
         self.loop_index = loop_start_frame
 
+        # 1. Load the first frame (index 0) to determine original size
+        temp_img = load_asset(f"{name}-0.png")
+        if temp_img:
+            orig_w, orig_h = temp_img.get_size()
+            # 2. Apply your scale multiplier (e.g., 2.5)
+            new_size = (int(orig_w * scale), int(orig_h * scale))
+
+            # 3. Load all frames starting from 0
+            # range(total_frames) for 4 frames will give 0, 1, 2, 3
+            for i in range(total_frames):
+                frame = load_asset(f"{name}-{i}.png", size=new_size)
+                if frame:
+                    self.frames.append(frame)
+
+        self.current_frame = 0.0
+        self.is_dancing = False
+
     def trigger_dance(self, state):
-        """Sets the dance state based on external blink detection."""
         self.is_dancing = state
 
     def update(self):
         if self.is_dancing and len(self.frames) > 1:
-            # The speed variable controls how fast we move through the frame list
             self.current_frame += self.animation_speed
-
             if self.current_frame >= len(self.frames):
+                # Loops back to your chosen loop_index (usually 1)
                 self.current_frame = float(self.loop_index)
         else:
+            # When not blinking, it resets to frame 0 (your idle pose)
             self.current_frame = 0.0
 
     def draw(self, screen):
         if self.frames:
-            # Convert float to int to index the frame list
             img = self.frames[int(self.current_frame)]
             screen.blit(img, self.pos)
