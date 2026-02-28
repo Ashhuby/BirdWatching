@@ -3,7 +3,6 @@ import os
 
 
 def load_asset(filename, size=None):
-    """Helper to load images from the assets folder."""
     path = os.path.join("assets", filename)
     if os.path.exists(path):
         img = pygame.image.load(path).convert_alpha()
@@ -14,41 +13,40 @@ def load_asset(filename, size=None):
 
 
 class Bird:
-    def __init__(self, name, pos, frame_count):
+    def __init__(self, name, pos, total_frames, loop_start_frame=1):
         self.name = name
         self.pos = list(pos)
         self.frames = []
 
-        # Load all frames: birdname1.png, birdname2.png, etc.
-        for i in range(1, frame_count + 1):
+        # Load all frames
+        for i in range(1, total_frames + 1):
             frame = load_asset(f"{name}{i}.png", size=(150, 150))
             if frame:
                 self.frames.append(frame)
 
         self.current_frame = 0.0
         self.is_dancing = False
-        self.animation_speed = 0.25  # Adjust for faster/slower dance
+        self.animation_speed = 0.2
+        # loop_start_frame is 1-indexed for humans, so we subtract 1 for the list index
+        self.loop_index = loop_start_frame
 
-    def trigger_dance(self):
-        """Starts the animation if it isn't already running."""
-        if not self.is_dancing and len(self.frames) > 1:
-            self.is_dancing = True
-            self.current_frame = 1.0  # Skip frame 0 (idle) to start dance
+    def trigger_dance(self, state):
+        """Sets the dance state based on external blink detection."""
+        self.is_dancing = state
 
     def update(self):
-        """Handles the animation logic."""
-        if self.is_dancing:
+        if self.is_dancing and len(self.frames) > 1:
             self.current_frame += self.animation_speed
-            # If we reach the end of the frames, return to idle
+
+            # If we reach the end of the animation, wrap back to the loop_index
+            # instead of going back to the idle frame (0)
             if self.current_frame >= len(self.frames):
-                self.current_frame = 0.0
-                self.is_dancing = False
+                self.current_frame = self.loop_index
         else:
-            self.current_frame = 0.0  # Force idle frame
+            # When not dancing, stay on the idle frame (0)
+            self.current_frame = 0.0
 
     def draw(self, screen):
-        """Draws the current frame to the screen."""
         if self.frames:
-            # Convert float index to int for list access
             img = self.frames[int(self.current_frame)]
             screen.blit(img, self.pos)

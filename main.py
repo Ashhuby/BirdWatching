@@ -85,7 +85,7 @@ ear_history = []
 
 # --- Create Birds ---
 my_birds = [
-    Bird("octo", (200, 400), 4),  # Name, (x, y), total frames
+    Bird("octo", (200, 400), 4, 1)  # Name, (x, y), total frames
 
 ]
 
@@ -126,12 +126,18 @@ while True:
             if len(ear_history) > 100: ear_history.pop(0)
 
             is_blinking = current_ear < 0.22
+
             if is_blinking and not is_blinked:
-                blink_count += 1; is_blinked = True
-                for b in my_birds:
-                    b.trigger_dance()
+                blink_count += 1
+                is_blinked = True
             elif not is_blinking:
                 is_blinked = False
+
+            # Tell the birds whether you are blinking right now
+            for b in my_birds:
+                b.trigger_dance(is_blinking)
+                b.update()  # Always updates (handles returning to idle)
+                b.draw(screen)  # Always visible
 
             if debug_mode:
                 #
