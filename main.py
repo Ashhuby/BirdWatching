@@ -51,11 +51,11 @@ def handle_persistent_audio(is_blinking, was_blinking):
 
     # JUST OPENED EYES: Save position and stop
     elif not is_blinking and was_blinking:
-        elapsed = pygame.mixer.music.get_pos() / 1000.0  # get_pos is in ms
+        elapsed = pygame.mixer.music.get_pos() / 1000.0
         track_positions[current_track] += elapsed
 
         pygame.mixer.music.stop()
-        pygame.mixer.music.unload()  # Free the file
+        pygame.mixer.music.unload()
         scratch_snd.play()
 
         current_track = random.choice(tracks)
@@ -89,7 +89,7 @@ def get_ear(landmarks, w, h):
 
 # --- INITIALISE ---
 pygame.init()
-pygame.mixer.init() # <--- ADDED: Initialize the audio mixer
+pygame.mixer.init()
 info = pygame.display.Info()
 sw, sh = info.current_w, info.current_h
 screen = pygame.display.set_mode((sw, sh), pygame.NOFRAME)
@@ -116,7 +116,7 @@ scratch_snd = pygame.mixer.Sound(os.path.join("sfx", "record.mp3"))
 # --- Create Birds ---
 my_birds = [
     Bird("octo", (200, 400), 4, 1),  # Name, (x, y), total frames
-    Bird("blue", (1400,500),9, 2)
+    Bird("blue", (400,500),9, 2)
 ]
 
 # --- MAIN LOOP ---
@@ -157,7 +157,6 @@ while True:
 
             is_blinking = current_ear < 0.22
 
-            # <--- ADDED: Call the audio function right here! --->
             handle_persistent_audio(is_blinking, is_blinked)
 
             if is_blinking and not is_blinked:
@@ -169,8 +168,8 @@ while True:
             # Tell the birds whether you are blinking right now
             for b in my_birds:
                 b.trigger_dance(is_blinking)
-                b.update()  # Always updates (handles returning to idle)
-                b.draw(screen)  # Always visible
+                #b.update()  # Always updates (handles returning to idle)
+                #b.draw(screen)  # Always visible
 
             if debug_mode:
                 #
