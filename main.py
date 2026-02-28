@@ -7,11 +7,11 @@ import mediapipe as mp
 from mediapipe.python.solutions import face_mesh as mp_face_mesh
 import time
 from sprites import Bird
+import random
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-
-# --- 1. CONSOLE SOURCE SELECTION ---
+# --- CONSOLE SOURCE SELECTION ---
 def select_camera_source():
     print("\n" + "=" * 50)
     print("      SELECT VIDEO SOURCE")
@@ -38,6 +38,27 @@ def select_camera_source():
 
 
 selected_source, is_live = select_camera_source()
+
+def handle_persistent_audio(is_blinking, was_blinking):
+    global current_track
+
+    # JUST CLOSED EYES: Resume the disco
+    if is_blinking and not was_blinking:
+        track_path = os.path.join("sfx", current_track)
+        pygame.mixer.music.load(track_path)
+        # Play starting from where we last left off
+        pygame.mixer.music.play(loops=-1, start=track_positions[current_track])
+
+    # JUST OPENED EYES: Save position and stop
+    elif not is_blinking and was_blinking:
+        elapsed = pygame.mixer.music.get_pos() / 1000.0  # get_pos is in ms
+        track_positions[current_track] += elapsed
+
+        pygame.mixer.music.stop()
+        pygame.mixer.music.unload()  # Free the file
+        scratch_snd.play()
+
+        current_track = random.choice(tracks)
 
 # --- COLORS ---
 C_DEBUG, C_GRAPH, C_IRIS, C_EYE = (255, 50, 50), (0, 255, 255), (255, 255, 0), (255, 100, 255)
@@ -68,6 +89,7 @@ def get_ear(landmarks, w, h):
 
 # --- INITIALISE ---
 pygame.init()
+pygame.mixer.init() # <--- ADDED: Initialize the audio mixer
 info = pygame.display.Info()
 sw, sh = info.current_w, info.current_h
 screen = pygame.display.set_mode((sw, sh), pygame.NOFRAME)
@@ -82,6 +104,14 @@ face_mesh = mp_face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=1, min_de
 
 current_state, debug_mode, blink_count, is_blinked = 0, False, 0, False
 ear_history = []
+
+# --- TRACK MANAGEMENT ---
+tracks = ["disco1.mp3", "disco2.mp3", "disco3.mp3"]
+# Store the current timestamp (in seconds) for each track
+track_positions = {track: 0.0 for track in tracks}
+current_track = random.choice(tracks)
+
+scratch_snd = pygame.mixer.Sound(os.path.join("sfx", "record.mp3"))
 
 # --- Create Birds ---
 my_birds = [
@@ -126,6 +156,9 @@ while True:
             if len(ear_history) > 100: ear_history.pop(0)
 
             is_blinking = current_ear < 0.22
+
+            # <--- ADDED: Call the audio function right here! --->
+            handle_persistent_audio(is_blinking, is_blinked)
 
             if is_blinking and not is_blinked:
                 blink_count += 1
