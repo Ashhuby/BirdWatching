@@ -1,75 +1,146 @@
+import os
 import cv2
-import mediapipe as mp
-import pygame
-import numpy as np
-import sys
 from cv2_enumerate_cameras import enumerate_cameras
+import numpy as np
+import pygame
+import mediapipe as mp
+from mediapipe.python.solutions import face_mesh as mp_face_mesh
+import time
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
-def run_diagnostic():
-    print(f"--- SYSTEM DIAGNOSTIC (Python {sys.version.split()[0]}) ---")
+# --- 1. CONSOLE SOURCE SELECTION ---
+def select_camera_source():
+    print("\n" + "=" * 50)
+    print("      SELECT VIDEO SOURCE")
+    print("=" * 50)
+    cameras = list(enumerate_cameras())
+    for i, cam in enumerate(cameras):
+        print(f"[{i}] {cam.name} {cam.index}")
 
-    # 1. TEST: Pygame (Graphics & Window)
+    file_option = len(cameras)
+    print(f"[{file_option}] blink.mp4 (TESTING MEDIAPIPE)")
+    print(" 700 is fast loading && driver 1400 is higher resolution")
+    print("=" * 50)
+
+    choice = input(f"Select source index (0-{file_option}): ")
     try:
-        pygame.init()
-        screen = pygame.display.set_mode((400, 300))
-        pygame.display.set_caption("Diagnostic Tool")
-        print("[SUCCESS] Pygame initialized and window created.")
-    except Exception as e:
-        print(f"[FAILED] Pygame error: {e}")
-
-    # 2. TEST: cv2-enumerate-cameras (Hardware Detection)
-    target_idx = 0
-    cams = list(enumerate_cameras())
-    if not cams:
-        print("[FAILED] No cameras detected by enumerator.")
-    else:
-        print(f"[SUCCESS] {len(cams)} camera(s) detected.")
-        for c in cams:
-            if "Camo" in c.name:
-                target_idx = c.index
-                print(f" -> Found Camo at Index: {target_idx}")
-
-    # 3. TEST: OpenCV + MediaPipe (Camera + AI)
-    cap = cv2.VideoCapture(target_idx)
-    mp_face = mp.solutions.face_mesh.FaceMesh(
-        static_image_mode=False,
-        max_num_faces=1,
-        refine_landmarks=True
-    )
-
-    print("Testing Feed & AI (Press 'Q' on the popup window to finish)...")
-
-    start_time = pygame.time.get_ticks()
-    while pygame.time.get_ticks() - start_time < 5000:  # Test for 5 seconds
-        success, frame = cap.read()
-        if not success:
-            print("[FAILED] Could not read frame from camera.")
-            break
-
-        # Flip and convert for MediaPipe
-        rgb_frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
-        results = mp_face.process(rgb_frame)
-
-        # Display feedback in the Pygame window
-        screen.fill((30, 30, 30))
-        msg = "AI TRACKING ACTIVE" if results.multi_face_landmarks else "WAITING FOR FACE..."
-        color = (0, 255, 0) if results.multi_face_landmarks else (255, 255, 0)
-
-        font = pygame.font.SysFont("Arial", 24)
-        text = font.render(msg, True, color)
-        screen.blit(text, (50, 130))
-        pygame.display.flip()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                break
-
-    print("[SUCCESS] MediaPipe processed frames successfully.")
-    cap.release()
-    pygame.quit()
-    print("--- ALL LIBRARIES VERIFIED ---")
+        idx = int(choice)
+        if idx < len(cameras):
+            return cameras[idx].index, True
+        elif idx == len(cameras):
+            return "blink.mp4", False
+    except:
+        pass
+    return 0, True
 
 
-if __name__ == "__main__":
-    run_diagnostic()
+selected_source, is_live = select_camera_source()
+
+# --- COLORS ---
+C_DEBUG, C_GRAPH, C_IRIS, C_EYE = (255, 50, 50), (0, 255, 255), (255, 255, 0), (255, 100, 255)
+
+# --- UTILITIES ---
+def load_asset(filename, size=None):
+    path = os.path.join("assets", filename)
+    if os.path.exists(path):
+        img = pygame.image.load(path).convert_alpha()
+        if size: img = pygame.transform.scale(img, size)
+        return img
+    return None
+
+def get_ear(landmarks, w, h):
+    idx = [33, 160, 158, 133, 153, 144]
+    p = [np.array([landmarks.landmark[i].x * w, landmarks.landmark[i].y * h]) for i in idx]
+    v1, v2 = np.linalg.norm(p[1] - p[5]), np.linalg.norm(p[2] - p[4])
+    hor = np.linalg.norm(p[0] - p[3])
+    return (v1 + v2) / (2.0 * hor)
+
+
+# --- INITIALISE ---
+pygame.init()
+info = pygame.display.Info()
+sw, sh = info.current_w, info.current_h
+screen = pygame.display.set_mode((sw, sh), pygame.NOFRAME)
+clock = pygame.time.Clock()
+
+font_ui = pygame.font.SysFont("Arial Rounded MT Bold", 35)
+font_debug_tiny = pygame.font.SysFont("Arial", 11, bold=True)
+font_debug_bold = pygame.font.SysFont("Consolas", 18, bold=True)
+
+cap = cv2.VideoCapture(selected_source)
+face_mesh = mp_face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=1, min_detection_confidence=0.5)
+
+current_state, debug_mode, blink_count, is_blinked = 0, False, 0, False
+ear_history = []
+
+# --- MAIN LOOP ---
+while True:
+    start_time = time.time()
+    for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE: pygame.quit(); exit()
+            if event.key == pygame.K_d: debug_mode = not debug_mode
+        if event.type == pygame.MOUSEBUTTONDOWN and current_state == 0: current_state = 1
+
+    success, frame = cap.read()
+    if not success:
+        if not is_live: cap.set(cv2.CAP_PROP_POS_FRAMES, 0); continue
+        continue
+
+    frame = cv2.flip(frame, 1) # FLIP THEM PATTIES
+
+    vw, vh = int(cap.get(3)), int(cap.get(4))
+    aspect = vw / vh
+    nw, nh = (sw, int(sw / aspect)) if sw / sh < aspect else (int(sh * aspect), sh)
+    ox, oy = (sw - nw) // 2, (sh - nh) // 2
+    frame_res = cv2.resize(frame, (nw, nh))
+    rgb_frame = cv2.cvtColor(frame_res, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb_frame)
+    video_surf = pygame.surfarray.make_surface(np.transpose(rgb_frame, (1, 0, 2)))
+
+    screen.fill((15, 15, 15))
+    screen.blit(video_surf, (ox, oy))
+
+    if current_state == 1:
+        current_ear, is_blinking = 0.0, False
+        if results and results.multi_face_landmarks:
+            face_lms = results.multi_face_landmarks[0]
+            current_ear = get_ear(face_lms, nw, nh)
+            ear_history.append(current_ear)
+            if len(ear_history) > 100: ear_history.pop(0)
+
+            is_blinking = current_ear < 0.22
+            if is_blinking and not is_blinked:
+                blink_count += 1; is_blinked = True
+            elif not is_blinking:
+                is_blinked = False
+
+
+        # DRAW BIRDS HERE
+        #if not debug_mode:
+
+        #else:
+            # EXTENDED DEBUG STATS
+            end_time = time.time()
+            latency = (end_time - start_time) * 1000
+            stats = [
+                f"FPS: {int(clock.get_fps())}",
+                f"LATENCY: {latency:.1f}ms",
+                f"RESOLUTION: {vw}x{vh}",
+                f"IRIS LOCK: {'YES' if results.multi_face_landmarks else 'NO'}",
+                f"BLINK STATE: {'BLINKING' if is_blinking else 'EYES OPEN'}"
+            ]
+            for i, s in enumerate(stats):
+                screen.blit(font_debug_bold.render(s, True, C_GRAPH), (sw - 280, 40 + i * 28))
+
+
+        # MAIN HUD
+        hud_rect = pygame.Rect(ox + 40, oy + 40, 320, 110)
+        pygame.draw.rect(screen, (255, 255, 255, 190), hud_rect, border_radius=15)
+        screen.blit(font_ui.render(f"Blinks: {blink_count}", True, (30, 30, 30)), (hud_rect.x + 25, hud_rect.y + 15))
+        screen.blit(font_ui.render(f"EAR: {current_ear:.4f}", True, (30, 30, 30)), (hud_rect.x + 25, hud_rect.y + 60))
+
+    pygame.display.flip()
+    clock.tick(30)
