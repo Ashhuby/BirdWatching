@@ -85,8 +85,8 @@ ear_history = []
 
 # --- Create Birds ---
 my_birds = [
-    Bird("octo", (200, 400), 4, 1)  # Name, (x, y), total frames
-
+    Bird("octo", (200, 400), 4, 1),  # Name, (x, y), total frames
+    Bird("blue", (400,500),9, 2)
 ]
 
 # --- MAIN LOOP ---
