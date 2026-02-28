@@ -41,6 +41,13 @@ selected_source, is_live = select_camera_source()
 # --- COLORS ---
 C_DEBUG, C_GRAPH, C_IRIS, C_EYE = (255, 50, 50), (0, 255, 255), (255, 255, 0), (255, 100, 255)
 
+# --- LANDMARK INDICES ---
+# Refined indices for eyelids and iris tracking
+EYELID_INDICES = [33, 160, 158, 133, 153, 144, 362, 385, 387, 263, 373, 380,
+                  7, 163, 161, 159, 157, 154, 155, 388, 386, 384, 390, 374, 382, 398]
+IRIS_INDICES = [468, 469, 470, 471, 472, 473, 474, 475, 476, 477]
+
+
 # --- UTILITIES ---
 def load_asset(filename, size=None):
     path = os.path.join("assets", filename)
@@ -117,6 +124,24 @@ while True:
             elif not is_blinking:
                 is_blinked = False
 
+            if debug_mode:
+                #
+                # DRAW ALL LANDMARKS
+                for i, lm in enumerate(face_lms.landmark):
+                    px, py = int(lm.x * nw) + ox, int(lm.y * nh) + oy
+
+                    # Highlight selection logic
+                    if i in IRIS_INDICES:
+                        pygame.draw.circle(screen, C_IRIS, (px, py), 2)
+                        lbl = font_debug_tiny.render(str(i), True, C_IRIS)
+                        screen.blit(lbl, (px + 3, py - 3))
+                    elif i in EYELID_INDICES:
+                        pygame.draw.circle(screen, C_EYE, (px, py), 2)
+                        lbl = font_debug_tiny.render(str(i), True, C_EYE)
+                        screen.blit(lbl, (px + 3, py - 3))
+                    else:
+                        # Non-essential points are just dots
+                        pygame.draw.circle(screen, (70, 70, 70), (px, py), 1)
 
         # DRAW BIRDS HERE
         #if not debug_mode:
@@ -135,6 +160,18 @@ while True:
             for i, s in enumerate(stats):
                 screen.blit(font_debug_bold.render(s, True, C_GRAPH), (sw - 280, 40 + i * 28))
 
+            # ENHANCED EAR GRAPH
+            graph_rect = pygame.Rect(sw // 2 - 200, sh - 120, 400, 80)
+            pygame.draw.rect(screen, (0, 0, 0, 200), graph_rect)
+            pygame.draw.rect(screen, C_GRAPH, graph_rect, 1)
+            if len(ear_history) > 2:
+                pts = [(graph_rect.x + i * 4, graph_rect.bottom - v * 220) for i, v in enumerate(ear_history)]
+                pygame.draw.lines(screen, C_GRAPH, False, pts, 2)
+                # Dynamic Threshold Line
+                pygame.draw.line(screen, C_DEBUG, (graph_rect.x, graph_rect.bottom - 0.22 * 220),
+                                 (graph_rect.right, graph_rect.bottom - 0.22 * 220), 2)
+                screen.blit(font_debug_tiny.render("0.22 THRESHOLD", True, C_DEBUG),
+                            (graph_rect.right + 5, graph_rect.bottom - 0.22 * 220 - 5))
 
         # MAIN HUD
         hud_rect = pygame.Rect(ox + 40, oy + 40, 320, 110)
