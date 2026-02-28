@@ -6,6 +6,7 @@ import pygame
 import mediapipe as mp
 from mediapipe.python.solutions import face_mesh as mp_face_mesh
 import time
+from sprites import Bird
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -82,6 +83,12 @@ face_mesh = mp_face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=1, min_de
 current_state, debug_mode, blink_count, is_blinked = 0, False, 0, False
 ear_history = []
 
+# --- Create Birds ---
+my_birds = [
+    Bird("octo", (200, 400), 4),  # Name, (x, y), total frames
+
+]
+
 # --- MAIN LOOP ---
 while True:
     start_time = time.time()
@@ -121,6 +128,8 @@ while True:
             is_blinking = current_ear < 0.22
             if is_blinking and not is_blinked:
                 blink_count += 1; is_blinked = True
+                for b in my_birds:
+                    b.trigger_dance()
             elif not is_blinking:
                 is_blinked = False
 
@@ -142,10 +151,6 @@ while True:
                     else:
                         # Non-essential points are just dots
                         pygame.draw.circle(screen, (70, 70, 70), (px, py), 1)
-
-        # DRAW BIRDS HERE
-        #if not debug_mode:
-
         #else:
             # EXTENDED DEBUG STATS
             end_time = time.time()
@@ -178,6 +183,9 @@ while True:
         pygame.draw.rect(screen, (255, 255, 255, 190), hud_rect, border_radius=15)
         screen.blit(font_ui.render(f"Blinks: {blink_count}", True, (30, 30, 30)), (hud_rect.x + 25, hud_rect.y + 15))
         screen.blit(font_ui.render(f"EAR: {current_ear:.4f}", True, (30, 30, 30)), (hud_rect.x + 25, hud_rect.y + 60))
+        for b in my_birds:
+            b.update()
+            b.draw(screen)
 
     pygame.display.flip()
     clock.tick(30)
